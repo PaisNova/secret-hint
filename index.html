@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PROTOCOL: AHAREN // SYSTEM LINK</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #ff0055; /* Hot Pink */
+            --primary-dim: rgba(255, 0, 85, 0.2);
+            --accent: #00f7ff; /* Cyan */
+            --bg: #050505;
+            --grid: rgba(0, 247, 255, 0.05);
+            --font-main: 'Share Tech Mono', monospace;
+            --font-head: 'Orbitron', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--primary);
+            font-family: var(--font-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
+
+        /* --- VISUAL EFFECTS (CRT & GRID) --- */
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .bg-grid {
+            position: fixed;
+            inset: -50%;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                linear-gradient(var(--grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+            background-size: 40px 40px;
+            transform: rotateX(45deg) translateY(-10%);
+            animation: gridMove 20s linear infinite;
+            z-index: -1;
+            opacity: 0.4;
+        }
+
+        /* --- HUD ELEMENTS --- */
+        #hud-top {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid var(--primary-dim);
+            padding-bottom: 10px;
+        }
+
+        .system-status {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-shadow: 0 0 5px var(--accent);
+        }
+
+        .level-indicator {
+            font-family: var(--font-head);
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            color: #fff;
+            text-transform: uppercase;
+        }
+
+        /* --- LEVEL 1: GAUGE --- */
+        #level-1-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .gauge-wrapper {
+            position: relative;
+            width: 80px;
+            height: 300px;
+            border: 2px solid var(--primary-dim);
+            border-radius: 4px;
+            background: rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px var(--primary-dim);
+            overflow: hidden;
+        }
+
+        .target-zone {
+            position: absolute;
+            bottom: 70%; 
+            height: 15%; /* Target between 70% and 85% */
+            width: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 247, 255, 0.3), transparent);
+            border-top: 1px dashed var(--accent);
+            border-bottom: 1px dashed var(--accent);
+            z-index: 2;
+        }
+
+        .gauge-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            background: linear-gradient(0deg, var(--primary), #ff5e9e);
+            box-shadow: 0 0 15px var(--primary);
+            transition: height 0.05s linear;
+            z-index: 1;
+        }
+
+        .hold-btn {
+            margin-top: 30px;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            background: rgba(0, 247, 255, 0.1);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            animation: pulse 2s infinite;
+            cursor: pointer;
+        }
+
+        .hold-btn:active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        /* --- LEVEL 2: RADAR --- */
+        #level-2-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .radar-scope {
+            width: 300px;
+            height: 300px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            position: relative;
+            background: radial-gradient(circle, rgba(255,0,85,0.05) 20%, transparent 70%);
+            box-shadow: 0 0 30px var(--primary-dim), inset 0 0 20px var(--primary-dim);
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        /* Grid lines inside radar */
+        .radar-scope::before, .radar-scope::after {
+            content: '';
+            position: absolute;
+            background: var(--primary-dim);
+        }
+        .radar-scope::before { top: 50%; left: 0; width: 100%; height: 1px; }
+        .radar-scope::after { left: 50%; top: 0; width: 1px; height: 100%; }
+
+        .radar-sweep {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 0deg, rgba(255,0,85,0.4) 30deg, transparent 31deg);
+            animation: radarSpin 2s linear infinite;
+        }
+
+        .secret-target {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            display: none; /* Controlled by JS */
+            box-shadow: 0 0 15px #fff;
+            animation: targetPulse 0.5s infinite alternate;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* Helper visuals for Level 2 */
+        .signal-readout {
+            margin-top: 20px;
+            font-family: var(--font-main);
+            color: var(--accent);
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .signal-bar-wrapper {
+            width: 200px;
+            height: 6px;
+            background: #333;
+            margin-top: 10px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .signal-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            transition: width 0.2s;
+        }
+
+        /* --- SUCCESS CARD --- */
+        #success-card {
+            display: none;
+            position: absolute;
+            background: rgba(5, 5, 5, 0.95);
+            border: 1px solid var(--primary);
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 0 50px var(--primary);
+            z-index: 100;
+            animation: scaleIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            max-width: 90%;
+        }
+
+        h2 { font-family: var(--font-head); margin: 0 0 10px 0; color: #fff; }
+        p { margin: 10px 0; line-height: 1.6; }
+        .quote { font-style: italic; color: var(--accent); font-size: 0.9rem; margin-top: 20px; }
+        
+        button.btn-restart {
+            margin-top: 25px;
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 10px 30px;
+            font-family: var(--font-head);
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button.btn-restart:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 20px var(--primary);
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 40px; } }
+        @keyframes radarSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0% { opacity: 0.6; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.6; transform: scale(0.95); } }
+        @keyframes targetPulse { from { box-shadow: 0 0 10px #fff; transform: translate(-50%, -50%) scale(1); } to { box-shadow: 0 0 25px #fff; transform: translate(-50%, -50%) scale(1.2); } }
+        @keyframes scaleIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+        .shake-anim { animation: shake 0.3s ease-in-out; }
+        
+        .feedback-text {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        #fail-text { color: red; }
+    </style>
+</head>
+<body>
+
+    <div class="crt-overlay"></div>
+    <div class="bg-grid"></div>
+
+    <div id="hud-top">
+        <div class="system-status">
+            SYSTEM: ONLINE<br>
+            SECURE: LOCKED
+        </div>
+        <div class="level-indicator" id="level-title">INITIALIZING...</div>
+    </div>
+
+    <div id="level-1-container">
+        <div class="gauge-wrapper" id="gauge-box">
+            <div class="target-zone"></div>
+            <div class="gauge-bar" id="gauge-fill"></div>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center;">
+            <div id="l1-instruction">HOLD to charge. RELEASE in the Blue Zone.</div>
+        </div>
+
+        <div class="hold-btn" id="trigger-btn">HOLD</div>
+        <div id="fail-text" class="feedback-text">SYNC FAILED</div>
+    </div>
+
+    <div id="level-2-container">
+        <div class="radar-scope" id="radar-area">
+            <div class="radar-sweep"></div>
+            <div id="secret-target" class="secret-target"></div>
+        </div>
+
+        <div class="signal-readout">
+            SIGNAL: <span id="signal-val">0</span>%<br>
+            <span style="font-size: 0.8rem; opacity: 0.7;">DISTANCE: <span id="dist-val">UNKNOWN</span></span>
+        </div>
+        <div class="signal-bar-wrapper">
+            <div class="signal-bar-fill" id="signal-fill"></div>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center; font-size: 0.9rem; opacity: 0.8;">
+            Move cursor/finger to scan.<br>Signal increases near target.
+        </div>
+    </div>
+
+    <div id="success-card">
+        <h2>ACCESS GRANTED</h2>
+        <div style="width: 100%; height: 1px; background: var(--primary); margin: 15px 0;"></div>
+        <p>PROTOCOL AHAREN SUCCESSFULLY SYNCED.</p>
+        <p class="quote">"Hopefully, this answers your question."<br>- Aharen-san wa Hakarenai (find the theme and background scene)</p>
+        <button class="btn-restart" onclick="location.reload()">REBOOT SYSTEM</button>
+    </div>
+
+    <script>
+        // --- GAME STATE ---
+        const state = {
+            level: 1,
+            gaugeVal: 0,
+            isCharging: false,
+            targetX: 0,
+            targetY: 0
+        };
+
+        // --- DOM ELEMENTS ---
+        const ui = {
+            title: document.getElementById('level-title'),
+            l1: document.getElementById('level-1-container'),
+            gaugeFill: document.getElementById('gauge-fill'),
+            gaugeBox: document.getElementById('gauge-box'),
+            trigger: document.getElementById('trigger-btn'),
+            failText: document.getElementById('fail-text'),
+            l2: document.getElementById('level-2-container'),
+            radar: document.getElementById('radar-area'),
+            target: document.getElementById('secret-target'),
+            signalText: document.getElementById('signal-val'),
+            distText: document.getElementById('dist-val'),
+            signalBar: document.getElementById('signal-fill'),
+            success: document.getElementById('success-card')
+        };
+
+        // --- AUDIO (Simple Beeps via AudioContext) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // --- LEVEL 1 LOGIC ---
+        function initLevel1() {
+            ui.title.innerText = "Lvl 1: FREQUENCY SYNC";
+            ui.l1.style.display = 'flex';
+            
+            // Mouse/Touch Events
+            const startCharge = (e) => {
+                e.preventDefault();
+                state.isCharging = true;
+                ui.trigger.style.background = "var(--primary)";
+                ui.trigger.style.color = "#000";
+            };
+
+            const endCharge = (e) => {
+                e.preventDefault();
+                if(!state.isCharging) return;
+                state.isCharging = false;
+                ui.trigger.style.background = "";
+                ui.trigger.style.color = "";
+                checkLevel1();
+            };
+
+            ui.trigger.addEventListener('mousedown', startCharge);
+            ui.trigger.addEventListener('touchstart', startCharge);
+            
+            window.addEventListener('mouseup', endCharge);
+            window.addEventListener('touchend', endCharge);
+
+            gameLoop();
+        }
+
+        function checkLevel1() {
+            // Target is 70% to 85%
+            if (state.gaugeVal >= 70 && state.gaugeVal <= 85) {
+                playTone(800, 'sine', 0.2);
+                state.level = 2;
+                ui.l1.style.display = 'none';
+                initLevel2();
+            } else {
+                // Fail
+                playTone(150, 'sawtooth', 0.3);
+                ui.failText.style.opacity = 1;
+                ui.gaugeBox.classList.add('shake-anim');
+                state.gaugeVal = 0;
+                ui.gaugeFill.style.height = '0%';
+                
+                setTimeout(() => {
+                    ui.failText.style.opacity = 0;
+                    ui.gaugeBox.classList.remove('shake-anim');
+                }, 500);
+            }
+        }
+
+        function gameLoop() {
+            if (state.level === 1 && state.isCharging) {
+                state.gaugeVal += 1.5; // Speed
+                if (state.gaugeVal > 100) state.gaugeVal = 100;
+                ui.gaugeFill.style.height = state.gaugeVal + '%';
+                
+                // Audio feedback while charging
+                if(state.gaugeVal % 10 < 1.5) playTone(200 + (state.gaugeVal * 5), 'triangle', 0.05);
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- LEVEL 2 LOGIC (Easier Version) ---
+        function initLevel2() {
+            ui.title.innerText = "Lvl 2: SIGNAL SEARCH";
+            ui.l2.style.display = 'flex';
+
+            // Randomize position (10% to 90% within box)
+            state.targetX = Math.random() * 240 + 30; // 300px width
+            state.targetY = Math.random() * 240 + 30; // 300px height
+
+            ui.target.style.left = state.targetX + 'px';
+            ui.target.style.top = state.targetY + 'px';
+
+            const handleMove = (e) => {
+                const rect = ui.radar.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+                // Calculate position inside radar
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                // Distance formula
+                const dist = Math.hypot(x - state.targetX, y - state.targetY);
+                
+                // Feedback Logic (The "Easier" part)
+                const maxDist = 250; // Max radius roughly
+                let signal = Math.max(0, 100 - (dist / maxDist * 100));
+                
+                ui.signalText.innerText = Math.floor(signal);
+                ui.distText.innerText = Math.floor(dist) + "px";
+                ui.signalBar.style.width = signal + '%';
+
+                // Visual Cues
+                if (dist < 50) {
+                    ui.target.style.display = 'block'; // Show target
+                    ui.target.style.opacity = (50 - dist) / 50 + 0.2;
+                    ui.radar.style.borderColor = "#fff";
+                    ui.signalBar.style.backgroundColor = "#fff";
+                } else {
+                    ui.target.style.display = 'none';
+                    ui.radar.style.borderColor = "var(--primary)";
+                    ui.signalBar.style.backgroundColor = "var(--accent)";
+                }
+            };
+
+            ui.radar.addEventListener('mousemove', handleMove);
+            ui.radar.addEventListener('touchmove', handleMove);
+
+            ui.target.addEventListener('mousedown', winGame);
+            ui.target.addEventListener('touchstart', winGame);
+        }
+
+        function winGame(e) {
+            e.stopPropagation();
+            playTone(1200, 'sine', 0.5);
+            playTone(1500, 'sine', 0.5);
+            ui.l2.style.display = 'none';
+            ui.title.innerText = "SYSTEM UNLOCKED";
+            ui.success.style.display = 'block';
+        }
+
+        // Start
+        setTimeout(initLevel1, 1000);
+
+    </script>
+</body>
+</html>
